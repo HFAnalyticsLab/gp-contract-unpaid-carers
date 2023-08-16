@@ -14,15 +14,34 @@ gp_contract_data <- s3read_using(read.csv,
                                  object = '/Tom/GP-contract-unpaid-carers/Data/Core GP Contract Q4 2022-23.csv',
                                  bucket = bucket)
 
-# Prepare data for join
-
+# Prepare contract data for join
 gp_contract_data <- gp_contract_data %>%
   filter(IND_CODE == "CGPCMI01" & ACH_DATE == "2023-03-31")
 
 gp_contract_data$VALUE <- as.numeric(gp_contract_data$VALUE)
 
+# Scope and fix LA problem in gp patients data
+
+patients_noLSOA <- gp_patients_data %>%
+  filter(LSOA_CODE == "NO2011")
+
+print(paste0("There are ",sum(patients_noLSOA$NUMBER_OF_PATIENTS), " patients with no associated LSOA code."))
+
+print(paste0("This accounts for ", round(sum(patients_noLSOA$NUMBER_OF_PATIENTS)/sum(gp_patients_data$NUMBER_OF_PATIENTS)*100, 3), "% of patients included in the Patients Registered at a GP Practice data"))
+
+
+
+fixed_gp_patients <- gp_patients_data %>%
+  group_by(PRACTICE_CODE) %>%
+  mutate(MAX_LSOA = LSOA_CODE[which.max(NUMBER_OF_PATIENTS)]) %>%
+  dplyr::ungroup() %>%
+  mutate(LSOA_CODE_FIXED = case_when(LSOA_CODE == "NO2011" ~ MAX_LSOA,
+                                 TRUE ~ LSOA_CODE))
+
+fixed_gp_patients$LSOA_CODE <- fixed_gp_patients$LSOA_CODE_FIXED
+
 # Join gp datasets
-gp_join <- left_join(gp_patients_data, gp_contract_data, by = "PRACTICE_CODE") %>%
+gp_join <- left_join(fixed_gp_patients, gp_contract_data, by = "PRACTICE_CODE") %>%
   select(PRACTICE_CODE, LSOA_CODE, NUMBER_OF_PATIENTS, VALUE) %>%
   rename(TOTAL_UNPAID_CARERS = VALUE) %>%
   group_by(PRACTICE_CODE) %>%
@@ -38,17 +57,18 @@ LA_mapping <- s3read_using(read.csv,
              bucket = bucket) 
 
 LA_mapping <- LA_mapping %>%
-  select(LSOA11CD, LSOA21CD, LAD22CD, LAD22NM) %>%
-  rename(LSOA_CODE = LSOA21CD)
+  group_by(LSOA11CD, LSOA11NM) %>%
+  summarise(LA_CODE = first(LAD22CD), LA_NAME = first(LAD22NM)) %>%
+  rename(LSOA_CODE = LSOA11CD)
 
 gps_LAs <- left_join(gp_join, LA_mapping, by = "LSOA_CODE")
 
 unmatched_LSOAs <- gps_LAs %>%
-  filter(is.na(LAD22CD))
+  filter(is.na(LA_NAME))
 
+print(paste0("There are ", nrow(unmatched_LSOAs), " unmatched LSOA codes"))
 
 gps_LAs_grouped <- gps_LAs %>%
   mutate_at(vars("CARERS_IN_LSOA"), ~replace_na(.,0)) %>%
-  group_by(LAD22CD, LAD22NM) %>%
-  summarise(EST_CARERS_IN_LA = sum(CARERS_IN_LSOA)) %>%
-  rename(LA_CODE = LAD22CD, LA_NAME = LAD22NM)
+  group_by(LA_CODE, LA_NAME) %>%
+  summarise(EST_CARERS_IN_LA = sum(CARERS_IN_LSOA))
