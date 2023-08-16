@@ -22,10 +22,13 @@ gp_contract_data$VALUE <- as.numeric(gp_contract_data$VALUE)
 
 # Scope and fix LA problem in gp patients data
 
+gp_patients_data <- gp_patients_data %>%
+  filter(str_detect(LSOA_CODE, "^E")|str_detect(LSOA_CODE, "^N"))
+
 patients_noLSOA <- gp_patients_data %>%
   filter(LSOA_CODE == "NO2011")
 
-print(paste0("There are ",sum(patients_noLSOA$NUMBER_OF_PATIENTS), " patients with no associated LSOA code."))
+print(paste0("There are ",sum(patients_noLSOA$NUMBER_OF_PATIENTS), " patients with no associated LSOA code, out of ", sum(gp_patients_data$NUMBER_OF_PATIENTS), " registered patients total."))
 
 print(paste0("This accounts for ", round(sum(patients_noLSOA$NUMBER_OF_PATIENTS)/sum(gp_patients_data$NUMBER_OF_PATIENTS)*100, 3), "% of patients included in the Patients Registered at a GP Practice data"))
 
@@ -72,3 +75,5 @@ gps_LAs_grouped <- gps_LAs %>%
   mutate_at(vars("CARERS_IN_LSOA"), ~replace_na(.,0)) %>%
   group_by(LA_CODE, LA_NAME) %>%
   summarise(EST_CARERS_IN_LA = sum(CARERS_IN_LSOA))
+
+
