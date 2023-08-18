@@ -131,4 +131,4 @@ print(paste0("After processing, there are now ", nrow(unmatched_LSOAs), " unmatc
 ## Write the gp_join and gps_LA_grouped to csv for later use
 
 write.csv(gps_LAs, 'gps_LAs.csv')
-write.csv(gps_LA_grouped, 'gps_LA_grouped.csv')
+write.csv(gps_LAs_grouped, 'gps_LAs_grouped.csv')

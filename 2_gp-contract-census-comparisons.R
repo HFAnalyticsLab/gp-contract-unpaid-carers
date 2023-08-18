@@ -121,4 +121,4 @@ print(paste0('Mean coverage of unpaid carers in the GP contract data is ', round
 
 ## Write joined census data to csv for later use
 
-write.csv(census_data_join, 'census_data_join.csv')
+write.csv(gp_census_join, 'gp_census_join.csv')
