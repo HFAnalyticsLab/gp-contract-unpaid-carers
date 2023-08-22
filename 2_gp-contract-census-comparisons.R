@@ -1,31 +1,35 @@
 library(tidyverse)
 library(aws.s3)
-library(sf)
-library(plotly)
+
 
 # Set bucket
 bucket <- "thf-dap-tier0-projects-ndl-f3b6da96-projectbucket-orxht6uldbv4"
 
 
 ######################################
-###### LOAD IN & PREPARE DATA ########
+###### LOAD IN PROCESSED DATA ########
 ######################################
 
 # Load in processed GP data
 
-if (file.exists('gps_LAs.csv')){
-  gps_LAs <- read.csv('gps_LAs.csv')
+if (file.exists('Processed_data/gps_LAs.csv')){
+  gps_LAs <- read.csv('Processed_data/gps_LAs.csv')
 } else {
   source('1_gp-practice-LA-mapping.R')
-  gps_LAs <- read.csv('gps_LAs.csv')
+  gps_LAs <- read.csv('Processed_data/gps_LAs.csv')
 }
 
-if (file.exists('gps_LAs_grouped.csv')){
-  gps_LAs_grouped <- read.csv('gps_LAs_grouped.csv')
+if (file.exists('Processed_data/gps_LAs_grouped.csv')){
+  gps_LAs_grouped <- read.csv('Processed_data/gps_LAs_grouped.csv')
 } else {
   source('1_gp-practice-LA-mapping.R')
-  gps_LAs_grouped <- read.csv('gps_LAs_grouped.csv')
+  gps_LAs_grouped <- read.csv('Processed_data/gps_LAs_grouped.csv')
 }
+
+
+################################################
+######### LOAD IN & PREPARE RAW DATA ###########
+################################################
 
 
 # Load in census data
@@ -65,60 +69,18 @@ gp_census_join <- full_join(gps_LAs_grouped, census_carers, by = "LA_CODE") %>%
 
 ggplot()+
   geom_histogram(data = gp_census_join, aes(x=Coverage), color = 'darkblue', fill = 'lightblue') +
-  theme_minimal()
+  theme_minimal() +
+  ylab('Count of LAs')
 
-
-# Identify greatest differences in coverage
-
-print(n = 20, gp_census_join[order(gp_census_join$Coverage), ])
-
-print(n = 20, gp_census_join[order(gp_census_join$Coverage, decreasing = TRUE), ])
-
-print(n = 20, gp_census_join[order(gp_census_join$Difference), ])
-
-print(n = 20, gp_census_join[order(gp_census_join$Difference, decreasing = TRUE), ])
-
-
-########################################
-########## CREATE LA MAP ###############
-########################################
-
-# Load in map of local authorities 
-
-map <- s3read_using(read_sf,
-                              object = '/Tom/GP-contract-unpaid-carers/Data/Local_Authority_Districts_December_2022_UK_BUC_V2_-5963189729337928393.geojson',
-                              bucket = bucket) %>%
-  rename(LA_CODE = LAD22CD) %>%
-  filter(str_detect(LA_CODE, "^E"))
-
-# Join map to gp/census joined data
-map_data_join <- full_join(map, gp_census_join, by="LA_CODE")
-
-# Make national map (coverage)
-ggplot() +
-  geom_sf(data = map_data_join, aes(fill = Coverage)) +
-  theme_void() +
-  scale_fill_gradient(low = "#56B1F7", high = "#132B43")
-
-# Filter to create London map
-
-london_join <- map_data_join %>%
-  filter(str_detect(LA_CODE, "^E09"))
-
-# Make London graph (coverage)
-ggplot() +
-  geom_sf(data = london_join, aes(fill = Coverage)) +
-  theme_void() +
-  scale_fill_gradient(low = "#56B1F7", high = "#132B43")
 
 
 # Overarching statements
 
 print(paste0("The census records ", sum(census_carers$CENSUS_NO_OF_CARERS), " unpaid carers, while the GP contract data records ", sum(gps_LAs_grouped$EST_CARERS_IN_LA)))
 
-print(paste0('Mean coverage of unpaid carers in the GP contract data is ', round(mean(gp_census_join$Coverage), 2), '% per LA compared to the census.'))
+print(paste0('Mean coverage of unpaid carers in the GP contract data is ', round(mean(gp_census_join$Coverage), 2), '% per LA compared to the census, with a standard deviation of ', round(sd(gp_census_join$Coverage)*100,2), ' percentage points.'))
 
 
 ## Write joined census data to csv for later use
 
-write.csv(gp_census_join, 'gp_census_join.csv')
+write.csv(gp_census_join, 'Processed_data/gp_census_join.csv')

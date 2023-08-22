@@ -1,6 +1,7 @@
 library(tidyverse)
 library(aws.s3)
 library(here)
+library(readxl)
 
 # Set bucket
 bucket <- "thf-dap-tier0-projects-ndl-f3b6da96-projectbucket-orxht6uldbv4"
@@ -18,14 +19,13 @@ if (file.exists('gp-reg-pat-prac-lsoa-all.csv')){
   
 } else {
   
-  zip_link <- 'https://files.digital.nhs.uk/E3/7F080B/gp-reg-pat-prac-lsoa-male-female-July-23.zip'
+  temp <- tempfile()
   
-  download.file(zip_link, destfile = 'gp-reg-pat-prac-lsoa-male-female-July-23.zip')
+  download.file('https://files.digital.nhs.uk/E3/7F080B/gp-reg-pat-prac-lsoa-male-female-July-23.zip', temp)
   
-  unzip('gp-reg-pat-prac-lsoa-male-female-July-23.zip', 'gp-reg-pat-prac-lsoa-all.csv')
+  gp_patients_data <- read.csv(unz(temp, 'gp-reg-pat-prac-lsoa-all.csv'))
   
-  gp_patients_data <- read.csv('gp-reg-pat-prac-lsoa-all.csv')
-  
+  unlink(temp)
   
 }
 
@@ -37,12 +37,14 @@ if (file.exists('Core GP Contract Q1 2023-24.csv')){
   
 } else {
   
+  temp <- tempfile()
+  
   download.file('https://files.digital.nhs.uk/C2/54C677/Core%20GP%20Contract_2324%20csv%20files.zip', 
-                destfile = 'Core_GP_Contract_2022-23_csv_files.zip')
+                temp)
   
-  unzip('Core_GP_Contract_2022-23_csv_files.zip', 'Core GP Contract Q1 2023-24.csv')
+  gp_contract_data <- read.csv(unz(temp, 'Core GP Contract Q1 2023-24.csv'))
   
-  gp_contract_data <- read.csv('Core GP Contract Q1 2023-24.csv')
+  unlink(temp)
   
 }
 
@@ -97,7 +99,7 @@ gp_join <- full_join(fixed_gp_patients, gp_contract_data, by = "PRACTICE_CODE") 
 ##### JOIN WITH LA DATA AND ESTIMATE CARERS PER LA #########
 ############################################################
 
-# Get rid of duplicates in the LA mapping data - these appear when 
+# Get rid of duplicates in the LA mapping data - these appear when a 201 LSOA code has been discontinued
 LA_mapping <- LA_mapping %>%
   group_by(LSOA11CD, LSOA11NM) %>%
   summarise(LA_CODE = first(LAD22CD), LA_NAME = first(LAD22NM)) %>%
@@ -128,7 +130,12 @@ print(paste0("This accounts for ", round(sum(patients_noLSOA$NUMBER_OF_PATIENTS)
 
 print(paste0("After processing, there are now ", nrow(unmatched_LSOAs), " unmatched LSOA codes"))
 
+
+# Clear large unnecessary data from the workspace
+rm(gp_contract_data, gp_patients_data, fixed_gp_patients, gp_join, patients_noLSOA, unmatched_LSOAs)
+
+
 ## Write the gp_join and gps_LA_grouped to csv for later use
 
-write.csv(gps_LAs, 'gps_LAs.csv')
-write.csv(gps_LAs_grouped, 'gps_LAs_grouped.csv')
+write.csv(gps_LAs, 'Processed_data/gps_LAs.csv')
+write.csv(gps_LAs_grouped, 'Processed_data/gps_LAs_grouped.csv')
