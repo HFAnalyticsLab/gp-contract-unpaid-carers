@@ -58,13 +58,21 @@ maj_ICBs <- ICB_mapping %>%
 ################################################
 ###### JOIN ICB DATA TO GP_CENSUS DATA #########
 ################################################
-
-
 ICB_join <- left_join(final_table, maj_ICBs, by = c('LA_CODE'='LAD22CD'))
+
+ICB_join$maj_ICB <- str_remove(ICB_join$maj_ICB, 'Integrated Care Board')
 
 ICB_grouped <- ICB_join %>%
   group_by(maj_ICB) %>%
   summarise(mean(Coverage), sd(Coverage))
+
+mean(ICB_grouped$`sd(Coverage)`)
+
+ggplot() +
+  geom_boxplot(data = ICB_join, aes(x = Coverage, y = reorder(maj_ICB, -Coverage))) +
+  theme_minimal() +
+  theme(text = element_text(size = 8))+
+  ylab('')
 
 
 #######################################################
@@ -83,7 +91,7 @@ IMD_cleaned <- IMD %>%
   group_by(DEP, LA_CODE, LA_NAME) %>%
   summarise(OBSERVATION = sum(OBSERVATION)) %>%
   pivot_wider(names_from = DEP, values_from = OBSERVATION) %>%
-  mutate(PERCENT_NO_DEPRIVATION = NO_DEP_DIMENSION/(DEP_DIMENSION + NO_DEP_DIMENSION))
+  mutate(PERCENT_DEPRIVATION = DEP_DIMENSION/(DEP_DIMENSION + NO_DEP_DIMENSION))
 
 IMD_rural_join <- left_join((left_join(ICB_join, rural_urban_cleaned, by = c('LA_CODE'))), IMD_cleaned, by = c('LA_CODE'))
 
@@ -93,18 +101,29 @@ IMD_rural_join <- left_join((left_join(ICB_join, rural_urban_cleaned, by = c('LA
 ############# GRAPH COMPARISONS #######################
 #######################################################
 
-ggplot()+
-  geom_boxplot(data = IMD_rural_join, aes(x = Coverage, y = broad_rural_urban_classification)) 
+IMD_rural_join %>%
+  select(LA_NAME, LA_CODE, Coverage, broad_rural_urban_classification)%>%
+  filter(!(is.na(broad_rural_urban_classification))) %>%
+  ggplot()+
+  geom_boxplot(aes(x = Coverage, y = broad_rural_urban_classification, color = broad_rural_urban_classification)) +
+  theme_minimal()+
+  ylab('Broad rural/urban classification') +
+  theme(legend.position = 'none')
 
 ggplot()+
-  geom_point(data=IMD_rural_join, aes(x = PERCENT_NO_DEPRIVATION, y = Coverage), color = 'darkblue') +
+  geom_point(data=IMD_rural_join, aes(y = PERCENT_DEPRIVATION, x = Coverage), color = 'darkblue') +
   theme_minimal() +
-  ylab('% of population with no dimensions of deprivation') +
-  theme(axis.title = element_text(size = 10))
+  xlab('Coverage') +
+  ylab('Proportion of households')
 
+cor(IMD_rural_join$Coverage, IMD_rural_join$CENSUS_NO_OF_CARERS)
+lm(IMD_rural_join$Coverage ~ IMD_rural_join$CENSUS_NO_OF_CARERS)
 
-
-
+ggplot()+
+  geom_point(data=IMD_rural_join, aes(y = CENSUS_NO_OF_CARERS, x = Coverage), color = 'darkblue') +
+  theme_minimal() +
+  xlab('Coverage') +
+  ylab('Number of carers, Census 2021')
 
 
 
