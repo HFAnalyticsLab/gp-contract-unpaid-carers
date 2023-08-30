@@ -137,8 +137,6 @@ ggplot()+
 # Prepare final table for output
 
 final_table <- missing_comparison %>%
-  select(1:3, 5:7, 9:10) %>%
-  rename(LA_NAME = LA_NAME.x) %>%
   arrange(Coverage, decreasing = FALSE)
 
 write.csv(final_table, 'Outputs/final_table.csv')

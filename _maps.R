@@ -1,12 +1,10 @@
 library(sf)
 library(plotly)
-install.packages('geogrid')
 library(geogrid)
-library(devtools)
-install.packages('devtools')
 library(devtools)
 install_github("psychemedia/htmlwidget-hexjson")
 library(hexjsonwidget)
+library(jsonlite)
 
 IHT_bucket <- "s3://thf-dap-tier0-projects-iht-067208b7-projectbucket-1mrmynh0q7ljp"
 ASC_subfolder <- "ASC and Finance Report"
@@ -31,10 +29,30 @@ hexed_map <- calculate_grid(map_data_join, grid_type = 'hexagonal')
 res_map <- assign_polygons(map_data_join, hexed_map)
 
 # Make national map (coverage)
-ggplot() +
-  geom_sf(data = res_map, aes(fill = Coverage)) +
+
+res_map$tooltips <- paste0(res_map$LAD22NM, '\nCoverage: ', round(res_map$Coverage, 2))
+
+testmap <- ggplot() +
+  geom_sf(data = res_map, aes(fill = Coverage, label = tooltips), color = 'black') +
   theme_void() +
-  scale_fill_gradient(low = "#56B1F7", high = "#132B43")
+  scale_fill_viridis_b()
+
+testmap
+
+ggplotly(testmap, tooltip = 'label')
+
+# Make national map (coverage by ICB)
+
+res_map$tooltips_ICB <- paste0(res_map$LAD22NM, '\nCoverage: ', round(res_map$Coverage, 2))
+
+testmap <- ggplot() +
+  geom_sf(data = res_map, aes(fill = Coverage, label = tooltips), color = 'black') +
+  theme_void() +
+  scale_fill_viridis_b()
+
+ggplotly(testmap, tooltip = 'label')
+
+
 
 # Filter to create London map
 
@@ -47,22 +65,17 @@ ggplot() +
   theme_void() +
   scale_fill_gradient(low = "#56B1F7", high = "#132B43")
 
+
+
+
 #############################
 ######### HEX MAP ###########
 #############################
 
-utla_hex_template <- s3read_using(read_excel,
-                                  object = paste0(ASC_subfolder,"/hexmap-lad-template.xlsx"), # File to open
-                                  bucket = IHT_bucket,
-                                  sheet=1)
 
-hours_hex_map_data <- utla_hex_template %>%
-  left_join(.,hours_hex_map_data,by=c("lacode"="area_code"))
-rm(utla_hex_template)
-
-hex_LA <- s3read_using(fromJSON,
-                    object = '/Tom/GP-contract-unpaid-carers/Data/uk-local-authority-districts-2023.hexjson',
-                    bucket = bucket)
+test <- s3read_using(fromJSON,
+                       object = '/Sebastien/GitHub/hexmaps/maps/uk-local-authority-districts-2020.hexjson',
+                       bucket = bucket)
 
 
 hex_data_join <- full_join(IMD_rural_join, hex_LA, by=c('LA_CODE'='id'))
@@ -77,5 +90,5 @@ test_hex <- jsonlite::fromJSON('Raw_data/LA_2023.hexjson')
 
 hex_LA_file <- 'Raw_data/LA_2023.hexjson'
 
-hexjsonwidget(jsonbase =  test_hex)
+hexjsonwidget(hex_LA, label = NA)
 
