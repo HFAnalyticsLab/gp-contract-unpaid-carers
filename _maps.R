@@ -1,17 +1,7 @@
-library(sf)
-library(plotly)
-library(geogrid)
-library(devtools)
-install_github("psychemedia/htmlwidget-hexjson")
-library(hexjsonwidget)
-library(jsonlite)
-
-IHT_bucket <- "s3://thf-dap-tier0-projects-iht-067208b7-projectbucket-1mrmynh0q7ljp"
-ASC_subfolder <- "ASC and Finance Report"
-
 ########################################
 ########## CREATE LA MAP ###############
 ########################################
+
 
 # Load in map of local authorities 
 
@@ -22,73 +12,97 @@ map <- s3read_using(read_sf,
   filter(str_detect(LA_CODE, "^E"))
 
 # Join map to gp/census joined data
-map_data_join <- full_join(map, gp_census_join, by="LA_CODE")
+map_data_full_join <- full_join(map, all_variables_joined, by="LA_CODE")
 
-hexed_map <- calculate_grid(map_data_join, grid_type = 'hexagonal')
 
-res_map <- assign_polygons(map_data_join, hexed_map)
+
+###########################################
+########### REGULAR MAP: LEAFLET ##########
+###########################################
+
+map_transformed <- st_transform(map_data_full_join, "+init=epsg:4326")
+
+colours_viridis <- colorNumeric(palette = 'viridis', domain = NULL)
+
+leaflet() %>%
+  addProviderTiles('CartoDB.Positron') %>%
+  addPolygons(
+    data = map_transformed,
+    label = ~LAD22NM,
+    fillColor = colours_viridis(map_transformed$Coverage),
+    fillOpacity = 0.8,
+    weight = 2,
+    color = 'black',
+    highlightOptions = highlightOptions(color = 'red')
+  ) %>% 
+  addLegend(
+    pal = colours_viridis,
+    values = map_transformed$Coverage,
+    title = 'Coverage'
+  )
+  
+
+
+#######################################
+######### HEX MAP: LEAFLET ############
+#######################################
+
+hexed_map <- calculate_grid(map_data_full_join, grid_type = 'hexagonal')
+
+res_map <- assign_polygons(map_data_full_join, hexed_map)
+
+res_map_transformed <- st_transform(res_map, "+init=epsg:4326")
+
+leaflet() %>%
+  addProviderTiles('CartoDB.Positron') %>%
+  addPolygons(
+    data = res_map_test,
+    label = res_map_test$LAD22NM,
+    fillColor = colours_viridis(res_map_test$Coverage),
+    fillOpacity = 0.8,
+    weight = 2,
+    color = 'black',
+    highlightOptions = highlightOptions(color = 'red')
+  ) %>% 
+  addLegend(
+    pal = colours_viridis,
+    values = res_map_test$Coverage,
+    title = 'Coverage'
+  )
+
+
+
+#############################################
+########## REGULAR MAP: GGPLOTLY ############
+#############################################
+
+map_data_full_join$tooltips <- paste0(map_data_full_join$LAD22NM, '\nCoverage: ', round(map_data_full_join$Coverage, 2))
+
+ggplotly(ggplot() +
+           geom_sf(data = map_data_full_join, aes(fill = Coverage, label = tooltips), color = 'black') +
+           theme_void() +
+           scale_fill_viridis_b(),
+         tooltip = 'label')
+
+#########################################
+########## HEX MAP: GGPLOTLY ############
+#########################################
 
 # Make national map (coverage)
 
 res_map$tooltips <- paste0(res_map$LAD22NM, '\nCoverage: ', round(res_map$Coverage, 2))
 
-testmap <- ggplot() +
+ggplotly(ggplot() +
   geom_sf(data = res_map, aes(fill = Coverage, label = tooltips), color = 'black') +
   theme_void() +
-  scale_fill_viridis_b()
+  scale_fill_viridis_b(), tooltip = 'label')
 
-testmap
+s3write_using(map_transformed,
+              write_sf,
+              object = '/Tom/GP-contract-unpaid-carers/Outputs/map_transformed.geojson',
+              bucket = bucket)
 
-ggplotly(testmap, tooltip = 'label')
-
-# Make national map (coverage by ICB)
-
-res_map$tooltips_ICB <- paste0(res_map$LAD22NM, '\nCoverage: ', round(res_map$Coverage, 2))
-
-testmap <- ggplot() +
-  geom_sf(data = res_map, aes(fill = Coverage, label = tooltips), color = 'black') +
-  theme_void() +
-  scale_fill_viridis_b()
-
-ggplotly(testmap, tooltip = 'label')
-
-
-
-# Filter to create London map
-
-london_join <- map_data_join %>%
-  filter(str_detect(LA_CODE, "^E09"))
-
-# Make London graph (coverage)
-ggplot() +
-  geom_sf(data = london_join, aes(fill = Coverage)) +
-  theme_void() +
-  scale_fill_gradient(low = "#56B1F7", high = "#132B43")
-
-
-
-
-#############################
-######### HEX MAP ###########
-#############################
-
-
-test <- s3read_using(fromJSON,
-                       object = '/Sebastien/GitHub/hexmaps/maps/uk-local-authority-districts-2020.hexjson',
-                       bucket = bucket)
-
-
-hex_data_join <- full_join(IMD_rural_join, hex_LA, by=c('LA_CODE'='id'))
-
-
-### HTML widget version
-
-
-download.file('https://github.com/odileeds/hexmaps/blob/6efe7925e104f8e082d848e6648d4a93bea99c39/maps/uk-local-authority-districts-2023.hexjson', destfile = 'Raw_data/LA_2023.hexjson')
-
-test_hex <- jsonlite::fromJSON('Raw_data/LA_2023.hexjson')
-
-hex_LA_file <- 'Raw_data/LA_2023.hexjson'
-
-hexjsonwidget(hex_LA, label = NA)
-
+s3write_using(res_map_transformed,
+              write_sf,
+              object = '/Tom/GP-contract-unpaid-carers/Outputs/hex_map_transformed.geojson',
+              bucket = bucket)
