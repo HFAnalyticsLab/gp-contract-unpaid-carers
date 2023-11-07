@@ -1,58 +1,25 @@
+#############################################################
 
-# Set bucket
-bucket <- "thf-dap-tier0-projects-ndl-f3b6da96-projectbucket-orxht6uldbv4"
+# Written in R 4.0.2
 
 ###########################
 ###### LOAD IN DATA #######
 ###########################
+  
+gp_patients_data <- read_csv('Raw_data/gp-reg-pat-prac-lsoa-all.csv')
 
-
-# Load in GP patients by practice and lsoa data
-
-if (file.exists('Raw_data/gp_practice_lsoa_july-23.rds')){
+gp_contract_data <- read_csv('Raw_data/Core GP Contract Q2 2023-24.csv')
   
-  gp_patients_data <- readRDS('Raw_data/gp_practice_lsoa_july-23.rds')
-  
-} else {
-  
-  temp <- tempfile()
-  
-  download.file('https://files.digital.nhs.uk/E3/7F080B/gp-reg-pat-prac-lsoa-male-female-July-23.zip', temp)
-  
-  gp_patients_data <- read.csv(unz(temp, 'gp-reg-pat-prac-lsoa-all.csv'))
-  
-  saveRDS(gp_patients_data, "Raw_data/gp_practice_lsoa_july-23.rds")
-  
-  unlink(temp)
-}
-
-# Load in GP contract data
-
-if (file.exists('Raw_data/core_gp_contract_2023_24_Q1.rds')){
-  
-  gp_contract_data <- readRDS('Raw_data/core_gp_contract_2023_24_Q1.rds')
-  
-} else {
-  
-  temp <- tempfile()
-  
-  download.file('https://files.digital.nhs.uk/C2/54C677/Core%20GP%20Contract_2324%20csv%20files.zip', 
-                temp)
-  
-  gp_contract_data <- read.csv(unz(temp, 'Core GP Contract Q1 2023-24.csv'))
-  
-  saveRDS(gp_contract_data, 'Raw_data/core_gp_contract_2023_24_Q1.rds')
-  
-  unlink(temp)
-  
-}
-
 
 # Load in LSOA -> LA mapping data
 
-LA_mapping <- s3read_using(read.csv,
-                           object = '/Tom/GP-contract-unpaid-carers/Data/LSOA_(2011)_to_LSOA_(2021)_to_Local_Authority_District_(2022)_Lookup_for_England_and_Wales_(Version_2) (1).csv',
-                           bucket = bucket) 
+#LA_mapping <- read_csv('Raw_data/LSOA_(2011)_to_LSOA_(2021)_to_Local_Authority_District_(2022)_Lookup_for_England_and_Wales_(Version_2).csv')
+
+LA_mapping <- readRDS('Resources/LA_to_LSOA_mapping.rds')
+
+# Load in census data
+
+census_carers <- readRDS('Resources/carers_2021_census.rds')
 
 #####################################
 ####### CLEAN & JOIN GP DATA ########
@@ -61,7 +28,7 @@ LA_mapping <- s3read_using(read.csv,
 
 # Prepare contract data for join
 gp_contract_data <- gp_contract_data %>%
-  filter(IND_CODE == "CGPCMI01" & ACH_DATE == "30/06/2023")
+  filter(IND_CODE == "CGPCMI01" & ACH_DATE == "2023-09-30")
 
 gp_contract_data$VALUE <- as.numeric(gp_contract_data$VALUE)
 
@@ -134,7 +101,54 @@ print(paste0("After processing, there are now ", nrow(unmatched_LSOAs), " unmatc
 rm(gp_contract_data, gp_patients_data, fixed_gp_patients, gp_join, patients_noLSOA, unmatched_LSOAs)
 
 
-## Write the gp_join and gps_LA_grouped to csv for later use
+# Prepare census data for join - aggregate and isolate all carer lines, then filter for only England LAs
 
-saveRDS(gps_LAs, 'Processed_data/gps_LAs.rds')
-saveRDS(gps_LAs_grouped, 'Processed_data/gps_LAs_grouped.rds')
+census_carers <- census_carers %>%
+  rename(LA_CODE = 1, LA_NAME = 2, UNPAID_CARE_CODE = 3, UNPAID_CARE_CATEGORY = 4, NO_OF_CARERS = 5) %>%
+  mutate(CARER = case_when(UNPAID_CARE_CODE %in% c(2,3,4,5,6) ~ 1,
+                           TRUE ~ 0)) %>%
+  filter(CARER == 1) %>%
+  group_by(LA_CODE, LA_NAME) %>%
+  summarise(CENSUS_NO_OF_CARERS = sum(NO_OF_CARERS)) %>%
+  filter(str_detect(LA_CODE, "^E"))
+
+
+
+#######################################
+###### JOIN GP AND CENSUS DATA ########
+#######################################
+
+# Join mapped gp and census data 
+
+gp_census_join <- full_join(gps_LAs_grouped, census_carers, by = "LA_CODE") %>%
+  mutate(Difference = CENSUS_NO_OF_CARERS - EST_CARERS_IN_LA) %>%
+  mutate(Coverage = EST_CARERS_IN_LA/CENSUS_NO_OF_CARERS)
+
+
+####################################
+############# OUTPUTS ##############
+####################################
+
+write.csv(gps_LAs, 'Outputs/GP_unpaid_carers_by_LSOA.csv')
+
+write.csv(gp_census_join, 'Outputs/GP_contract_to_census_LA_comparison.csv')
+
+####################################
+########## COMPARISONS #############
+####################################
+
+# Examine distribution of coverage
+
+ggplot()+
+  geom_histogram(data = gp_census_join, aes(x=Coverage), color = 'darkblue', fill = 'lightblue') +
+  theme_minimal() +
+  ylab('Count of LAs')
+
+
+# Overarching statements
+
+print(paste0("The census records ", sum(census_carers$CENSUS_NO_OF_CARERS), " unpaid carers, while the GP contract data records ", sum(gps_LAs_grouped$EST_CARERS_IN_LA)))
+
+print(paste0('Mean coverage of unpaid carers in the GP contract data is ', round(mean(gp_census_join$Coverage), 2), '% per LA compared to the census, with a standard deviation of ', round(sd(gp_census_join$Coverage)*100,2), ' percentage points.'))
+
+
