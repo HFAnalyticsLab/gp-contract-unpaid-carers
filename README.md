@@ -30,5 +30,5 @@ This script loads in, processes and transforms the GP Core Contract data on unpa
 
 ## Outputs ## 
 These scripts return the following outputs:
-- _GP_unpaid_carers_by_LSOA.csv_, a csv file featuring the full breakdown of unpaid carers by GP practice profiled to an LSOa level
+- _GP_unpaid_carers_by_LSOA.csv_, a csv file featuring the full breakdown of unpaid carers by GP practice profiled to an LSOA level
 - _GP_contract_to_census_LA_comparison.csv_, a csv file featuring the full local authority level comparison between the transformed and aggregated GP core contract data and the 2021 census data on unpaid carers
