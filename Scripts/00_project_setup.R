@@ -41,7 +41,7 @@ if (file.exists('Raw_data/gp_practice_lsoa_july-23.csv')){
 
 # Load in GP contract data
 
-if (file.exists('Raw_data/core_gp_contract_2023_24_Q1.csv')){
+if (file.exists('Raw_data/Core GP Contract Q4 2023-24.csv')){
   
   print('GP contract data already downloaded.')
   
@@ -49,10 +49,10 @@ if (file.exists('Raw_data/core_gp_contract_2023_24_Q1.csv')){
   
   temp <- tempfile()
   
-  download.file('https://files.digital.nhs.uk/D3/176AFA/Core_GP_Contract_2324_csv_files.zip', 
+  download.file('https://files.digital.nhs.uk/37/E77B1F/Core_GP_Contract_2324_csv_files.zip', 
                 temp)
   
-  unzip(temp, files = c('Core GP Contract Q2 2023-24.csv'), exdir = 'Raw_data/')
+  unzip(temp, files = c('Core GP Contract Q4 2023-24.csv'), exdir = 'Raw_data/')
   
   unlink(temp)
   

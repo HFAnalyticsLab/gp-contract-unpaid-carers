@@ -8,7 +8,7 @@
   
 gp_patients_data <- read_csv('Raw_data/gp-reg-pat-prac-lsoa-all.csv')
 
-gp_contract_data <- read_csv('Raw_data/Core GP Contract Q2 2023-24.csv')
+gp_contract_data <- read_csv('Raw_data/Core GP Contract Q4 2023-24.csv')
   
 
 # Load in LSOA -> LA mapping data
@@ -28,7 +28,7 @@ census_carers <- readRDS('Resources/carers_2021_census.rds')
 
 # Prepare contract data for join
 gp_contract_data <- gp_contract_data %>%
-  filter(IND_CODE == "CGPCMI01" & ACH_DATE == "2023-09-30")
+  filter(IND_CODE == "CGPCMI01" & ACH_DATE == "2024-03-31")
 
 gp_contract_data$VALUE <- as.numeric(gp_contract_data$VALUE)
 
@@ -65,7 +65,7 @@ gp_join <- full_join(fixed_gp_patients, gp_contract_data, by = "PRACTICE_CODE") 
 ##### JOIN WITH LA DATA AND ESTIMATE CARERS PER LA #########
 ############################################################
 
-# Get rid of duplicates in the LA mapping data - these appear when a 201 LSOA code has been discontinued
+# Get rid of duplicates in the LA mapping data - these appear when a 2011 LSOA code has been discontinued
 LA_mapping <- LA_mapping %>%
   group_by(LSOA11CD, LSOA11NM) %>%
   summarise(LA_CODE = first(LAD22CD), LA_NAME = first(LAD22NM)) %>%
