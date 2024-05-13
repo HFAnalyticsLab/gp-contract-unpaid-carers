@@ -31,7 +31,7 @@ if (file.exists('Raw_data/gp_practice_lsoa_july-23.csv')){
   
   temp <- tempfile()
   
-  download.file('https://files.digital.nhs.uk/E3/7F080B/gp-reg-pat-prac-lsoa-male-female-July-23.zip', temp)
+  download.file('https://files.digital.nhs.uk/5C/704155/gp-reg-pat-prac-lsoa-male-female-Apr-24.zip', temp)
   
   unzip(temp, files = c('gp-reg-pat-prac-lsoa-all.csv'), exdir = 'Raw_data/' )
   
