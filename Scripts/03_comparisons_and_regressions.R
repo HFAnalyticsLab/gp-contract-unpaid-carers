@@ -327,6 +327,15 @@ cor(all_variables_filtered$Coverage, all_variables_filtered$prop_over65)
 cor(all_variables_filtered$Coverage, all_variables_filtered$prop_under25)
 cor(all_variables_filtered$Coverage, all_variables_filtered$prop_over50hours)
 cor(all_variables_filtered$Coverage, all_variables_filtered$prop_lowintensity)
+cor(all_variables_filtered$Coverage, all_variables_filtered$PERCENT_DEPRIVATION)
+cor(all_variables_filtered$Coverage, all_variables_filtered$CENSUS_NO_OF_CARERS)
+
+all_variables_joined %>%
+  ggplot()+
+  geom_point(aes(x = Coverage, y = CENSUS_NO_OF_CARERS), color = 'darkblue') +
+  theme_minimal() +
+  ylab('Number of carers, Census 2021') +
+  theme(axis.title = element_text(size = 10))
 
 s3write_using(all_variables_joined,
               write.csv,

@@ -1,4 +1,4 @@
-packages <- c('tidyverse', 'here', 'readxl')
+packages <- c('tidyverse', 'here', 'readxl', 'readODS')
 
 installed_packages <- packages %in% row.names(installed.packages())
 
@@ -12,6 +12,8 @@ lapply(packages, library, character.only = TRUE)
 ## Set up folder structure
 
 ifelse(!dir.exists(file.path(here('Raw_data/'))), dir.create(file.path(here('Raw_data/'))), print('Raw data directory already exists'))  
+
+ifelse(!dir.exists(file.path(here('Raw_data/all_releases'))), dir.create(file.path(here('Raw_data/all_releases'))), print('Raw data subfolder already exists'))  
 
 ifelse(!dir.exists(file.path(here('Outputs/'))), dir.create(file.path(here('Outputs/'))), print('Outputs directory already exists'))
 
@@ -36,6 +38,7 @@ if (file.exists('Raw_data/gp_practice_lsoa_july-23.csv')){
   unzip(temp, files = c('gp-reg-pat-prac-lsoa-all.csv'), exdir = 'Raw_data/' )
   
   unlink(temp)
+  
 }
 
 
