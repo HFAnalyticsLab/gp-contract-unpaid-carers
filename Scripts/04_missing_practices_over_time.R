@@ -155,10 +155,31 @@ no_missing_patients <- sapply(1:length(all_missing_practices), function(i){
   sum(all_missing_practices[[i]]$TOTAL_PRACTICE_PATIENTS)
 })
 
-missingness_df <- data.frame(as_date(dates), no_missing_practices, no_missing_patients) %>%
-  rename(date = 1, practices = 2, patients = 3)
+total_practices <- sapply(1:length(all_missing_practices), function(i){ 
+  n_distinct(all_joins[[i]]$PRACTICE_CODE)
+})
 
-ggplot() +
-  geom_area(data = missingness_df, aes(y = patients, x = date)) +
-  geom_line(data = missingness_df, aes(y = practices, x = date)) + 
-  scale_y_continuous(sec.axis = sec_axis(name =  "no_missing_practices", ~.))
+total_patients <- sapply(1:length(all_missing_practices), function(i){ 
+  
+  all_joins[[i]]$NUMBER_OF_PATIENTS[is.na(all_joins[[i]]$NUMBER_OF_PATIENTS)] <- 0
+  
+  sum(all_joins[[i]]$NUMBER_OF_PATIENTS)
+})
+
+missingness_df <- data.frame(as_date(dates), no_missing_practices, no_missing_patients, total_practices, total_patients) %>%
+  rename(date = 1, m_practices = 2, m_patients = 3, practices = 4, patients = 5) %>%
+  mutate(percent_missing_practices = m_practices/practices) %>%
+  mutate(percent_missing_patients = m_patients/patients)
+
+#ggplotly(
+ggplot(data = missingness_df) +
+  geom_area(aes(y = percent_missing_patients, x = date, fill ='Patients registered to missing practices'), alpha = 0.8) +
+  geom_line(aes(y = percent_missing_practices, x = date, color = 'Missing practices')) +
+  scale_y_continuous(labels = scales::percent) +
+  ylab('Percent missing') +
+  theme_minimal() +
+  scale_color_manual(name='',
+                      breaks=c('Patients registered to missing practices', 'Missing practices'),
+                      values=c('Patients registered to missing practices'='firebrick1', 'Missing practices'='steelblue')) +
+  theme(legend.title=element_blank(), legend.position = 'bottom')
+#)
