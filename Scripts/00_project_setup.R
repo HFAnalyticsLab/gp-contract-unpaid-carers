@@ -1,4 +1,4 @@
-packages <- c('tidyverse', 'here', 'readxl', 'readODS')
+packages <- c('tidyverse', 'here', 'readxl', 'readODS', 'plotly', 'scales', 'sf', 'geogrid')
 
 installed_packages <- packages %in% row.names(installed.packages())
 
