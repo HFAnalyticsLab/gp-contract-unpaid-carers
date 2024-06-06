@@ -341,3 +341,5 @@ s3write_using(all_variables_joined,
               write.csv,
               object = '/Tom/GP-contract-unpaid-carers/Outputs/all_variables_joined.csv',
               bucket = bucket)
+
+write.csv(all_variables_joined, 'Outputs/all_variables_joined.csv')
