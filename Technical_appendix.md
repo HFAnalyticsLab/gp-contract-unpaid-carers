@@ -1,6 +1,6 @@
 ## Technical appendix
 
-To make a comparison between unpaid carers registered by GP practice from the [GP Contract Services data, 2023-24 Q4 release] (https://digital.nhs.uk/data-and-information/publications/statistical/gp-contract-services) and the number of unpaid carers by local authority reported in the 2021 census, the practice-level GP contract data must be transformed into local authority-level data. 
+To make a comparison between unpaid carers registered by GP practice from the [GP Contract Services data, 2023-24 Q4 release](https://digital.nhs.uk/data-and-information/publications/statistical/gp-contract-services) and the number of unpaid carers by local authority reported in the 2021 census, the practice-level GP contract data must be transformed into local authority-level data. 
 
 This transformation was performed by linking the GP contract data to NHS Digital’s [Patients Registered at a GP Practice – LSOA data (April 2024 release)](https://digital.nhs.uk/data-and-information/publications/statistical/patients-registered-at-a-gp-practice/april-2024), which details the number of patients registered to each GP practice by Lower Super Output Area (LSOA) of residence. The numbers of unpaid carers registered to each practice are then proportionally assigned to LSOAs by the percentage of the given practice’s patients residing in each LSOA. These estimates for GP-registered unpaid carers in each LSOA are then summed to a Local Authority level for comparison to the census. 
 
